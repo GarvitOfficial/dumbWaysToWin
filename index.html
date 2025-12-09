@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Silly Games: Dumb Ways to Win | Arcade</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Silly Games - A collection of unconventional arcade games where you win by doing dumb things! Flirt with AI, scream to fly, and more wacky challenges.">
+    <meta name="keywords" content="silly games, arcade, browser games, unconventional, dumb ways to win, mini games">
+    <meta name="author" content="Silly Games Team">
+    
+    <!-- Open Graph / Social Media -->
+    <meta property="og:title" content="Silly Games: Dumb Ways to Win">
+    <meta property="og:description" content="Unconventional arcade games where you win by doing silly things!">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="https://via.placeholder.com/1200x630/000000/39ff14?text=SILLY+GAMES">
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Silly Games: Dumb Ways to Win">
+    <meta name="twitter:description" content="Arcade games with unconventional win conditions!">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="apple-touch-icon" href="favicon.svg">
+    
+    <!-- Fonts & Styles -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Preload critical resources -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- Sentiment library for Levels 1 & 2 -->
+    <script src="https://unpkg.com/sentiment@5.0.2/build/sentiment.js"></script>
+</head>
+
+<body>
+
+    <!-- LOADING SCREEN -->
+    <div id="loading-screen">
+        <div class="loading-content">
+            <div class="loading-logo">
+                <h1 class="beveled-text loading-title">SILLY GAMES</h1>
+                <p class="loading-subtitle">DUMB WAYS TO WIN</p>
+            </div>
+            
+            <!-- Progress Bar -->
+            <div class="loading-progress-container">
+                <div class="loading-progress-bar">
+                    <div id="loading-progress-fill" class="loading-progress-fill"></div>
+                </div>
+                <p id="loading-percent" class="loading-percent">0%</p>
+            </div>
+            
+            <!-- Rotating Tips -->
+            <p id="loading-tip" class="loading-tip">INITIALIZING SILLINESS...</p>
+            
+            <!-- Press Start (shown when ready) -->
+            <button id="start-btn" class="start-btn hidden">PRESS START</button>
+        </div>
+    </div>
+
+    <!-- APP CONTAINER (Populated by JS) -->
+    <div id="app" class="hidden"></div>
+
+    <!-- CORE LIBRARIES -->
+    <script src="https://unpkg.com/sentiment@5.0.2/build/sentiment.min.js"></script>
+
+    <!-- Main Logic -->
+    <script type="module" src="js/main.js"></script>
+</body>
+
+</html>
