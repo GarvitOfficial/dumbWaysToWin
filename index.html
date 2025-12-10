@@ -39,8 +39,38 @@
 
 <body>
 
+    <!-- USERNAME ENTRY SCREEN -->
+    <div id="username-screen">
+        <div class="username-content">
+            <h1 class="beveled-text" style="color: var(--neon-green); font-size: 1.8rem; text-shadow: 0 0 20px var(--neon-green);">🎮 SILLY GAMES 🎮</h1>
+            <p style="color: #aaa; font-size: 0.6rem; margin: 10px 0;">DUMB WAYS TO WIN</p>
+            
+            <div class="username-input-container">
+                <label style="color: var(--neon-yellow); font-size: 0.7rem;">ENTER YOUR NAME:</label>
+                <input type="text" id="username-input" maxlength="15" placeholder="PLAYER" autocomplete="off"
+                    style="width: 100%; max-width: 250px; padding: 12px; font-size: 1rem; text-align: center; 
+                    background: #111; border: 3px solid var(--neon-blue); color: #fff; 
+                    font-family: 'Press Start 2P', cursive; text-transform: uppercase;">
+            </div>
+            
+            <button id="enter-game-btn" class="beveled-btn primary" style="margin-top: 20px; padding: 15px 40px; font-size: 0.8rem;">
+                🚀 ENTER GAME
+            </button>
+            
+            <p id="username-error" style="color: #ff6b6b; font-size: 0.5rem; min-height: 20px; margin-top: 10px;"></p>
+            
+            <!-- Mini Leaderboard Preview -->
+            <div class="mini-leaderboard" style="margin-top: 20px; padding: 15px; background: rgba(0,0,0,0.5); border: 2px solid #333; max-width: 280px; width: 100%;">
+                <h4 style="color: var(--neon-pink); margin: 0 0 10px 0; font-size: 0.6rem;">🏆 TOP PLAYERS</h4>
+                <div id="mini-leaderboard-list" style="font-size: 0.5rem; color: #aaa;">
+                    Loading...
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- LOADING SCREEN -->
-    <div id="loading-screen">
+    <div id="loading-screen" class="hidden">
         <div class="loading-content">
             <div class="loading-logo">
                 <h1 class="beveled-text loading-title">SILLY GAMES</h1>
@@ -65,6 +95,15 @@
 
     <!-- APP CONTAINER (Populated by JS) -->
     <div id="app" class="hidden"></div>
+
+    <!-- LEADERBOARD MODAL -->
+    <div id="leaderboard-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2 style="color: var(--neon-pink); margin: 0;">🏆 LEADERBOARD</h2>
+            <div id="leaderboard-list" style="margin: 15px 0; max-height: 300px; overflow-y: auto;"></div>
+            <button id="close-leaderboard-btn" class="beveled-btn small">CLOSE</button>
+        </div>
+    </div>
 
     <!-- CORE LIBRARIES -->
     <script src="https://unpkg.com/sentiment@5.0.2/build/sentiment.min.js"></script>

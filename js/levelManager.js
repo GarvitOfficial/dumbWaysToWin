@@ -28,6 +28,11 @@ export class LevelManager {
             let scoreResult = null;
             if (this.scoreManager) {
                 scoreResult = this.scoreManager.completeLevel(levelId, timeTaken, 100);
+
+                // Sync to Supabase leaderboard
+                if (window.syncScore) {
+                    window.syncScore();
+                }
             }
 
             // Unlock next level
@@ -195,11 +200,15 @@ export class LevelManager {
             // Get stats
             const stats = this.scoreManager ? this.scoreManager.getOverallStats() : null;
 
+            // Get player name
+            const playerName = localStorage.getItem('silly_username') || 'PLAYER';
+
             // Create Arcade Header
             const header = document.createElement('header');
             header.innerHTML = `
                 <div class="header-left">
                     <span class="beveled-text-small">SILLY ARCADE</span>
+                    <span class="player-name">👤 ${playerName}</span>
                 </div>
                 <div class="header-right">
                     ${stats ? `
@@ -207,6 +216,7 @@ export class LevelManager {
                         <span class="header-stat">🏆 ${stats.totalPoints}</span>
                     ` : ''}
                     <span class="unlock-count">${this.maxUnlock + 1}/${this.levels.length}</span>
+                    <button id="leaderboard-menu-btn" class="leaderboard-btn">🏆 TOP 10</button>
                 </div>
             `;
             this.app.appendChild(header);
@@ -262,6 +272,12 @@ export class LevelManager {
             container.appendChild(grid);
             menuSection.appendChild(container);
             this.app.appendChild(menuSection);
+
+            // Leaderboard button handler
+            const lbBtn = document.getElementById('leaderboard-menu-btn');
+            if (lbBtn && window.showLeaderboard) {
+                lbBtn.onclick = () => window.showLeaderboard();
+            }
         }, 200);
     }
 }
