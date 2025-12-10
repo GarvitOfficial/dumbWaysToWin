@@ -15,7 +15,11 @@ import level11 from './levels/level11.js';
 import level12 from './levels/level12.js';
 import level13 from './levels/level13.js';
 import level14 from './levels/level14.js';
-import level15 from './levels/level15.js';
+import level15 from './levels/level15.js'; // Grand Finale - always LAST
+import level16 from './levels/level16.js';
+import level17 from './levels/level17.js';
+import level18 from './levels/level18.js';
+import level19 from './levels/level19.js';
 
 // Loading Tips
 const LOADING_TIPS = [
@@ -50,12 +54,28 @@ window.addEventListener('DOMContentLoaded', () => {
     // Initialize Level Manager
     const levelManager = new LevelManager('app', scoreManager);
 
-    // Register Levels
+    // Register Levels (20 total! Grand Finale is LAST)
     const levels = [
-        level0, // Level 1: Emotional Captcha
-        level1, level2, level3, level4, level5,
-        level6, level7, level8, level9, level10,
-        level11, level12, level13, level14, level15
+        level0,  // 1: Emotional Captcha
+        level1,  // 2: Sentiment Flirt
+        level2,  // 3: Rage Quit
+        level3,  // 4: Scream to Fly
+        level4,  // 5: Bowling Swipe
+        level5,  // 6: Don't Click
+        level6,  // 7
+        level7,  // 8
+        level8,  // 9
+        level9,  // 10
+        level10, // 11
+        level11, // 12
+        level12, // 13
+        level13, // 14
+        level14, // 15: Rhythm Tap
+        level16, // 16: Pac-Man Fever
+        level17, // 17: Escape Box
+        level18, // 18: Sniper Shot
+        level19, // 19: Color Memory
+        level15  // 20: GRAND FINALE (always last!)
     ];
     levelManager.registerLevels(levels);
 

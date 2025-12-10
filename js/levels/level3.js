@@ -3,24 +3,32 @@ export default {
     title: 'Scream to Fly',
     description: 'Yell at your screen to fly! 🎤',
     html: `
-        <div class="game-container beveled-panel" style="gap: 0.5rem;">
-            <h3 style="margin: 0;">Level 3: Scream to Fly 🐦</h3>
-            <p style="font-size: 0.6rem; margin: 0;">YELL to jump! Pass 1 pipe to win!</p>
-            <div class="canvas-wrapper beveled-inset" style="margin: 0;">
-                <canvas id="l3-canvas" width="320" height="280"></canvas>
-            </div>
-            <div style="width: 100%; padding: 8px; background: #222; border: 2px solid #555;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <label style="font-size: 0.5rem; color: #aaa; white-space: nowrap;">🔊 SENSITIVITY</label>
-                    <input type="range" id="l3-sensitivity" min="20" max="80" value="45" style="flex: 1;">
+        <div class="game-container beveled-panel" style="gap: 0.5rem; padding: 10px;">
+            <div class="canvas-wrapper" style="position: relative; margin: 0; border: 4px solid #5a8f3e;">
+                <canvas id="l3-canvas" width="320" height="400"></canvas>
+                <!-- Overlay UI -->
+                <div id="l3-score-display" style="position: absolute; top: 10px; left: 50%; transform: translateX(-50%); font-size: 2rem; color: #fff; text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;">0</div>
+                <div id="l3-start-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px;">
+                    <div style="font-size: 1.5rem; color: #ffd700;">🐦 SCREAM BIRD 🐦</div>
+                    <div style="font-size: 0.6rem; color: #fff;">YELL to make the bird jump!</div>
+                    <button id="l3-start-btn" class="beveled-btn primary" style="padding: 15px 30px;">🎤 TAP TO START</button>
                 </div>
-                <div id="l3-vol-meter" style="width: 0%; height: 6px; background: lime; margin-top: 5px; transition: width 0.1s; border-radius: 3px;"></div>
+                <div id="l3-gameover-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; flex-direction: column; align-items: center; justify-content: center; gap: 10px;">
+                    <div style="font-size: 1.2rem; color: #ff6b6b;">GAME OVER</div>
+                    <div id="l3-final-score" style="font-size: 1.5rem; color: #ffd700;">0</div>
+                    <button id="l3-retry-btn" class="beveled-btn primary" style="padding: 12px 25px;">🔄 RETRY</button>
+                </div>
             </div>
-            <p id="l3-status" class="feedback-text" style="margin: 0; font-size: 0.6rem;">Waiting for mic...</p>
-            <div style="display: flex; gap: 10px;">
-                <button class="beveled-btn primary" id="l3-start-btn" style="padding: 10px;">🎤 START</button>
-                <button class="beveled-btn small" id="l3-back-btn">Back</button>
+            <div style="width: 100%; padding: 8px; background: #2d5a1e; border: 3px solid #5a8f3e; border-radius: 5px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.5rem; color: #90EE90;">🔊</span>
+                    <div style="flex: 1; height: 12px; background: #1a3a0e; border-radius: 6px; overflow: hidden;">
+                        <div id="l3-vol-meter" style="width: 0%; height: 100%; background: linear-gradient(90deg, #39ff14, #7fff00); transition: width 0.05s;"></div>
+                    </div>
+                    <input type="range" id="l3-sensitivity" min="20" max="80" value="40" style="width: 60px; accent-color: #39ff14;">
+                </div>
             </div>
+            <button class="beveled-btn small" id="l3-back-btn" style="padding: 8px;">← BACK</button>
         </div>
     `,
     init: (levelManager) => {
@@ -28,29 +36,42 @@ export default {
         let isGameRunning = false;
         let animationFrameId;
 
-        // Game Physics - EASY MODE
-        const GRAVITY = 0.15;  // Very slow fall
-        const SPEED = 1.5;     // Slow pipes
-        const WIN_SCORE = 1;   // Just pass 1 pipe to win!
+        // Flappy Bird Physics
+        const GRAVITY = 0.4;
+        const JUMP_FORCE = -6;
+        const PIPE_SPEED = 2;
+        const PIPE_GAP = 120;
+        const PIPE_WIDTH = 52;
+        const PIPE_SPAWN_RATE = 100;
+        const WIN_SCORE = 1;
 
-        // Jump Control - More stable
+        // Jump cooldown for stability
         let lastJumpTime = 0;
-        const JUMP_COOLDOWN = 600; // Longer cooldown = more stable
+        const JUMP_COOLDOWN = 400;
         let volumeHistory = [];
-        const SMOOTH_SAMPLES = 5;
+        const SMOOTH_SAMPLES = 4;
 
-        let bird = { x: 50, y: 200, velocity: 0, radius: 12, jump: -7, isJumping: false };
+        // Game objects
+        let bird = { x: 80, y: 200, velocity: 0, width: 34, height: 24, rotation: 0 };
         let pipes = [];
+        let ground = { y: 370, height: 30 };
         let frames = 0;
-        let l3Score = 0;
+        let score = 0;
+        let gameState = 'ready'; // ready, playing, gameover
 
+        const canvas = document.getElementById('l3-canvas');
+        const ctx = canvas.getContext('2d');
         const backBtn = document.getElementById('l3-back-btn');
         const startBtn = document.getElementById('l3-start-btn');
-        const canvas = document.getElementById('l3-canvas');
-        const statusElement = document.getElementById('l3-status');
+        const retryBtn = document.getElementById('l3-retry-btn');
+        const startOverlay = document.getElementById('l3-start-overlay');
+        const gameoverOverlay = document.getElementById('l3-gameover-overlay');
+        const scoreDisplay = document.getElementById('l3-score-display');
+        const finalScoreDisplay = document.getElementById('l3-final-score');
+        const volMeter = document.getElementById('l3-vol-meter');
 
-        // Initial UI State
-        initUI();
+        // Draw initial screen
+        drawGame();
 
         backBtn.onclick = () => {
             stopGame();
@@ -58,39 +79,9 @@ export default {
         };
 
         startBtn.onclick = () => initAudio();
-
-        function initUI() {
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = "#1a1a2e";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = "#FFF";
-            ctx.font = "bold 18px Arial";
-            ctx.textAlign = "center";
-            ctx.fillText("🎤 Press Start & SCREAM!", canvas.width / 2, 120);
-            ctx.font = "14px Arial";
-            ctx.fillText("Pass 1 pipe to win!", canvas.width / 2, 150);
-            statusElement.innerText = "Waiting for mic...";
-        }
-
-        function winGame() {
-            isGameRunning = false;
-            cancelAnimationFrame(animationFrameId);
-            const ctx = canvas.getContext('2d');
-            ctx.fillStyle = "rgba(0,0,0,0.85)";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = "#39ff14";
-            ctx.font = "bold 28px Arial";
-            ctx.textAlign = "center";
-            ctx.fillText("🎉 LOUD VICTORY! 🎉", canvas.width / 2, 120);
-            ctx.font = "18px Arial";
-            ctx.fillText(`Score: ${l3Score}`, canvas.width / 2, 155);
-            setTimeout(() => levelManager.completeLevel('level-3'), 1500);
-        }
+        retryBtn.onclick = () => resetGame();
 
         async function initAudio() {
-            statusElement.innerText = "Requesting mic access...";
-
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -99,198 +90,290 @@ export default {
 
                 microphone.connect(analyser);
                 analyser.fftSize = 256;
-                const bufferLength = analyser.frequencyBinCount;
-                dataArray = new Uint8Array(bufferLength);
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
 
-                statusElement.innerText = "🎤 Mic Active! SCREAM NOW!";
-                statusElement.style.color = "#39ff14";
+                startOverlay.style.display = 'none';
                 startGame();
-
             } catch (err) {
                 console.error(err);
-                statusElement.innerText = "❌ Mic Denied! Can't play :(";
-                statusElement.style.color = "red";
+                startBtn.innerText = '❌ MIC DENIED';
+                startBtn.style.background = '#ff6b6b';
             }
         }
 
         function startGame() {
             if (isGameRunning) return;
-            bird = { x: 50, y: 140, velocity: 0, radius: 10, jump: -4.5, isJumping: false }; // Gentler jump
+            bird = { x: 80, y: 200, velocity: 0, width: 34, height: 24, rotation: 0 };
             pipes = [];
             frames = 0;
-            l3Score = 0;
+            score = 0;
             volumeHistory = [];
             lastJumpTime = 0;
+            gameState = 'playing';
             isGameRunning = true;
-            startBtn.classList.add('hidden');
-            draw();
+            scoreDisplay.innerText = '0';
+            gameLoop();
+        }
+
+        function resetGame() {
+            gameoverOverlay.style.display = 'none';
+            startGame();
         }
 
         function stopGame() {
             isGameRunning = false;
+            gameState = 'ready';
             cancelAnimationFrame(animationFrameId);
             if (audioContext && audioContext.state !== 'closed') {
                 audioContext.close();
             }
-            startBtn.classList.remove('hidden');
         }
 
         function getSmoothedVolume() {
+            if (!analyser) return 0;
             analyser.getByteFrequencyData(dataArray);
             let sum = 0;
             for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
             let currentAvg = sum / dataArray.length;
 
-            // Add to history
             volumeHistory.push(currentAvg);
-            if (volumeHistory.length > SMOOTH_SAMPLES) {
-                volumeHistory.shift();
-            }
+            if (volumeHistory.length > SMOOTH_SAMPLES) volumeHistory.shift();
 
-            // Return smoothed average
             return volumeHistory.reduce((a, b) => a + b, 0) / volumeHistory.length;
         }
 
-        function draw() {
+        function gameLoop() {
             if (!isGameRunning) return;
 
-            const ctx = canvas.getContext('2d');
-            updateGame(canvas);
+            update();
+            drawGame();
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
 
-            // Background - night sky gradient
-            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            gradient.addColorStop(0, "#1a1a2e");
-            gradient.addColorStop(1, "#16213e");
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        function update() {
+            frames++;
 
-            // Bird with glow effect
-            ctx.shadowColor = "#ff6b6b";
-            ctx.shadowBlur = 15;
-            ctx.fillStyle = "#ff6b6b";
-            ctx.beginPath();
-            ctx.arc(bird.x, bird.y, bird.radius, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.shadowBlur = 0;
-
-            // Bird eye
-            ctx.fillStyle = "#fff";
-            ctx.beginPath();
-            ctx.arc(bird.x + 4, bird.y - 3, 3, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Pipes with neon glow
-            ctx.shadowColor = "#39ff14";
-            ctx.shadowBlur = 10;
-            ctx.fillStyle = "#39ff14";
-            pipes.forEach(pipe => {
-                ctx.fillRect(pipe.x, 0, pipe.w, pipe.top);
-                ctx.fillRect(pipe.x, canvas.height - pipe.bottom, pipe.w, pipe.bottom);
-            });
-            ctx.shadowBlur = 0;
-
-            // Score
-            ctx.fillStyle = "#FFF";
-            ctx.font = "bold 24px Arial";
-            ctx.textAlign = "left";
-            ctx.fillText(`🎯 ${l3Score}/${WIN_SCORE}`, 10, 35);
-
-            // Audio Check with smoothing
+            // Audio input
             const smoothedVolume = getSmoothedVolume();
-
-            // Sensitivity Control
             const sensitivity = parseInt(document.getElementById('l3-sensitivity').value);
-            const THRESHOLD = sensitivity;
-
-            // Visual Vol Meter with better scaling
             const volPercent = Math.min((smoothedVolume / 80) * 100, 100);
-            const volMeter = document.getElementById('l3-vol-meter');
             volMeter.style.width = volPercent + '%';
 
             const now = Date.now();
             const canJump = (now - lastJumpTime) > JUMP_COOLDOWN;
 
-            if (smoothedVolume > THRESHOLD) {
-                volMeter.style.background = canJump ? '#ff0000' : '#ff6600';
-            } else {
-                volMeter.style.background = 'linear-gradient(90deg, #39ff14, #00ff88)';
-            }
-
-            // Jump trigger with cooldown
-            if (smoothedVolume > THRESHOLD && canJump) {
-                bird.velocity = bird.jump;
+            // Jump on scream
+            if (smoothedVolume > sensitivity && canJump) {
+                bird.velocity = JUMP_FORCE;
                 lastJumpTime = now;
+                volMeter.style.background = 'linear-gradient(90deg, #ff6b6b, #ff0000)';
+            } else {
+                volMeter.style.background = 'linear-gradient(90deg, #39ff14, #7fff00)';
             }
 
-            animationFrameId = requestAnimationFrame(draw);
-        }
-
-        function updateGame(canvas) {
-            frames++;
+            // Apply gravity
             bird.velocity += GRAVITY;
             bird.y += bird.velocity;
 
-            // Ceiling/Floor collision
-            if (bird.y + bird.radius >= canvas.height || bird.y - bird.radius <= 0) {
+            // Bird rotation based on velocity
+            bird.rotation = Math.min(Math.max(bird.velocity * 3, -30), 90);
+
+            // Ground collision
+            if (bird.y + bird.height / 2 >= ground.y) {
                 gameOver();
                 return;
             }
 
-            // Spawn pipes - less frequent
-            if (frames % 150 === 0) {
-                let gap = 130; // Big gap = easy!
-                let minHeight = 20;
-                let maxTop = canvas.height - gap - minHeight;
-                let topHeight = Math.floor(Math.random() * (maxTop - minHeight + 1) + minHeight);
+            // Ceiling collision
+            if (bird.y - bird.height / 2 <= 0) {
+                bird.y = bird.height / 2;
+                bird.velocity = 0;
+            }
+
+            // Spawn pipes
+            if (frames % PIPE_SPAWN_RATE === 0) {
+                const minTop = 50;
+                const maxTop = ground.y - PIPE_GAP - 50;
+                const topHeight = Math.floor(Math.random() * (maxTop - minTop)) + minTop;
 
                 pipes.push({
                     x: canvas.width,
-                    w: 45,
-                    top: topHeight,
-                    bottom: canvas.height - gap - topHeight,
+                    topHeight: topHeight,
+                    bottomY: topHeight + PIPE_GAP,
                     passed: false
                 });
             }
 
-            for (let i = 0; i < pipes.length; i++) {
-                let p = pipes[i];
-                p.x -= SPEED;
-                if (p.x + p.w < 0) {
-                    pipes.shift();
-                    i--;
+            // Update pipes
+            for (let i = pipes.length - 1; i >= 0; i--) {
+                const pipe = pipes[i];
+                pipe.x -= PIPE_SPEED;
+
+                // Remove off-screen pipes
+                if (pipe.x + PIPE_WIDTH < 0) {
+                    pipes.splice(i, 1);
                     continue;
                 }
-                if (bird.x + bird.radius > p.x && bird.x - bird.radius < p.x + p.w) {
-                    if (bird.y - bird.radius < p.top || bird.y + bird.radius > canvas.height - p.bottom) {
+
+                // Collision detection
+                if (bird.x + bird.width / 2 > pipe.x && bird.x - bird.width / 2 < pipe.x + PIPE_WIDTH) {
+                    if (bird.y - bird.height / 2 < pipe.topHeight || bird.y + bird.height / 2 > pipe.bottomY) {
                         gameOver();
+                        return;
                     }
                 }
-                if (p.x + p.w < bird.x && !p.passed) {
-                    l3Score++;
-                    p.passed = true;
 
-                    // Check win condition
-                    if (l3Score >= WIN_SCORE) {
+                // Score
+                if (!pipe.passed && pipe.x + PIPE_WIDTH < bird.x) {
+                    pipe.passed = true;
+                    score++;
+                    scoreDisplay.innerText = score;
+
+                    if (score >= WIN_SCORE) {
                         winGame();
+                        return;
                     }
                 }
             }
         }
 
-        function gameOver() {
-            isGameRunning = false;
-            const status = document.getElementById('l3-status');
-            status.innerText = `💀 Game Over! Score: ${l3Score}/${WIN_SCORE}`;
-            status.style.color = "#ff6b6b";
-            startBtn.classList.remove('hidden');
-            startBtn.innerText = "🔄 Try Again!";
-            cancelAnimationFrame(animationFrameId);
+        function drawGame() {
+            // Sky gradient (day theme like Flappy Bird)
+            const skyGradient = ctx.createLinearGradient(0, 0, 0, ground.y);
+            skyGradient.addColorStop(0, '#4ec0ca');
+            skyGradient.addColorStop(1, '#bee4c2');
+            ctx.fillStyle = skyGradient;
+            ctx.fillRect(0, 0, canvas.width, ground.y);
+
+            // Clouds
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            drawCloud(50, 60, 40);
+            drawCloud(180, 40, 30);
+            drawCloud(280, 80, 35);
+
+            // Pipes (green like Flappy Bird)
+            pipes.forEach(pipe => {
+                // Top pipe
+                drawPipe(pipe.x, 0, PIPE_WIDTH, pipe.topHeight, true);
+                // Bottom pipe
+                drawPipe(pipe.x, pipe.bottomY, PIPE_WIDTH, ground.y - pipe.bottomY, false);
+            });
+
+            // Ground
+            ctx.fillStyle = '#ded895';
+            ctx.fillRect(0, ground.y, canvas.width, ground.height);
+            ctx.fillStyle = '#5a8f3e';
+            ctx.fillRect(0, ground.y, canvas.width, 10);
+
+            // Bird
+            drawBird();
         }
 
-        // Export cleanup if we need to force stop from outside
+        function drawCloud(x, y, size) {
+            ctx.beginPath();
+            ctx.arc(x, y, size * 0.5, 0, Math.PI * 2);
+            ctx.arc(x + size * 0.4, y - size * 0.2, size * 0.4, 0, Math.PI * 2);
+            ctx.arc(x + size * 0.8, y, size * 0.5, 0, Math.PI * 2);
+            ctx.arc(x + size * 0.4, y + size * 0.2, size * 0.35, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawPipe(x, y, width, height, isTop) {
+            // Main pipe body
+            const pipeGradient = ctx.createLinearGradient(x, 0, x + width, 0);
+            pipeGradient.addColorStop(0, '#5a8f3e');
+            pipeGradient.addColorStop(0.3, '#73bf2e');
+            pipeGradient.addColorStop(0.7, '#73bf2e');
+            pipeGradient.addColorStop(1, '#5a8f3e');
+            ctx.fillStyle = pipeGradient;
+            ctx.fillRect(x, y, width, height);
+
+            // Pipe cap
+            const capHeight = 26;
+            const capWidth = width + 10;
+            const capX = x - 5;
+            const capY = isTop ? y + height - capHeight : y;
+
+            ctx.fillStyle = pipeGradient;
+            ctx.fillRect(capX, capY, capWidth, capHeight);
+
+            // Pipe border
+            ctx.strokeStyle = '#3d5c28';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x, y, width, height);
+            ctx.strokeRect(capX, capY, capWidth, capHeight);
+        }
+
+        function drawBird() {
+            ctx.save();
+            ctx.translate(bird.x, bird.y);
+            ctx.rotate(bird.rotation * Math.PI / 180);
+
+            // Body
+            ctx.fillStyle = '#f7dc6f';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, bird.width / 2, bird.height / 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#d68910';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Wing
+            ctx.fillStyle = '#f0b429';
+            ctx.beginPath();
+            ctx.ellipse(-5, 5, 10, 6, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eye
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(8, -4, 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(10, -4, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Beak
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.moveTo(15, 0);
+            ctx.lineTo(22, 3);
+            ctx.lineTo(15, 6);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function gameOver() {
+            isGameRunning = false;
+            gameState = 'gameover';
+            cancelAnimationFrame(animationFrameId);
+            finalScoreDisplay.innerText = score;
+            gameoverOverlay.style.display = 'flex';
+        }
+
+        function winGame() {
+            isGameRunning = false;
+            gameState = 'gameover';
+            cancelAnimationFrame(animationFrameId);
+
+            ctx.fillStyle = 'rgba(0,0,0,0.7)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#ffd700';
+            ctx.font = 'bold 28px "Press Start 2P", cursive';
+            ctx.textAlign = 'center';
+            ctx.fillText('🎉 YOU WIN! 🎉', canvas.width / 2, canvas.height / 2 - 20);
+            ctx.font = '16px "Press Start 2P", cursive';
+            ctx.fillStyle = '#fff';
+            ctx.fillText(`Score: ${score}`, canvas.width / 2, canvas.height / 2 + 20);
+
+            setTimeout(() => levelManager.completeLevel('level-3'), 1500);
+        }
+
         this.cleanup = () => stopGame();
     },
-    cleanup: () => {
-        // Logic handled in internal helper, but exposed here if context is lost
-    }
+    cleanup: () => { }
 };
