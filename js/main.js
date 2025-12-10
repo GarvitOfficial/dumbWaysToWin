@@ -1,6 +1,7 @@
 import { LevelManager } from './levelManager.js';
 import { ScoreManager } from './scoreManager.js';
 import { leaderboard } from './leaderboard.js';
+import { sound } from './sound.js';
 import level0 from './levels/level0.js';
 import level1 from './levels/level1.js';
 import level2 from './levels/level2.js';
@@ -39,6 +40,9 @@ const LOADING_TIPS = [
 
 // Expose leaderboard globally
 window.leaderboard = leaderboard;
+
+// Expose sound manager globally
+window.sound = sound;
 
 // MAIN APP
 window.addEventListener('DOMContentLoaded', async () => {
