@@ -2,7 +2,7 @@
 
 > **An arcade collection of unconventional browser games where you win by doing silly things!**
 
-![Silly Games](https://via.placeholder.com/800x400/000000/39ff14?text=SILLY+GAMES)
+
 
 ## 🕹️ Play Now
 
